@@ -55,6 +55,17 @@ ENV PYTHONPATH="/app/src"
 ENV HF_HOME="/models/hf_cache"
 ENV PYTHONUNBUFFERED=1
 
+# Pre-create /models/hf_cache with UID 1000 ownership inside the
+# image. Compose stacks set `user: '1000:1000'`; without this the
+# container's worker would hit `Permission denied` on the named
+# volume because Docker would mount /models with root-owned
+# defaults. When the operator's named volume is empty on first
+# mount, Docker seeds it from the image — so these permissions
+# carry over and HF can write the model cache. Existing volumes
+# with broken perms must be wiped once before this fix takes effect.
+RUN mkdir -p /models/hf_cache /app/data && \
+    chown -R 1000:1000 /models /app
+
 ARG VORRAT_BUILD_CHANNEL=dev
 ARG VORRAT_BUILD_SHA=unknown
 ARG VORRAT_BUILD_DATE=unknown
