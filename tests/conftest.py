@@ -3,7 +3,7 @@
 Tests run against a deterministic stub runner — no GGUF on disk,
 no llama_cpp import. The only test that touches a real model is the
 explicit smoke test under `tests/test_smoke_real_model.py`, which is
-skipped unless `VORRAT_CLASSIFIER_SMOKE_MODEL_PATH` is set.
+skipped unless `OFF_CLASSIFIER_SMOKE_MODEL_PATH` is set.
 """
 
 from __future__ import annotations
@@ -14,11 +14,11 @@ import pytest
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
-from vorrat_classifier.api.classify import get_runner
-from vorrat_classifier.inference.runner import ClassifierRunner
-from vorrat_classifier.main import app
-from vorrat_classifier.schemas import ClassifyRequest, ClassifyResponse
-from vorrat_classifier.taxonomy import Category
+from off_classifier.api.classify import get_runner
+from off_classifier.inference.runner import ClassifierRunner
+from off_classifier.main import app
+from off_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.taxonomy import Category
 
 
 class StubRunner:

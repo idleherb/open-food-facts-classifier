@@ -8,11 +8,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from vorrat_classifier import __version__
-from vorrat_classifier.api.classify import router as classify_router
-from vorrat_classifier.config import Settings, get_settings
-from vorrat_classifier.inference.runner import ClassifierRunner
-from vorrat_classifier.schemas import HealthzResponse
+from off_classifier import __version__
+from off_classifier.api.classify import router as classify_router
+from off_classifier.config import Settings, get_settings
+from off_classifier.inference.runner import ClassifierRunner
+from off_classifier.schemas import HealthzResponse
 
 log = logging.getLogger(__name__)
 
@@ -20,23 +20,33 @@ log = logging.getLogger(__name__)
 def _build_runner(settings: Settings) -> ClassifierRunner:
     """Construct the runner appropriate for the current settings.
 
-    No model path ⇒ a tiny stub that always reports `is_loaded=False`
-    and refuses to classify. This keeps the service deployable
-    (healthz answers, container starts, k8s readiness probes work)
-    even when no GGUF has been mounted yet — matches the
-    walking-skeleton-first protocol.
+    No model path OR the file isn't on disk ⇒ a tiny stub that always
+    reports `is_loaded=False` and refuses to classify. This keeps the
+    service deployable (healthz answers, container starts, k8s
+    readiness probes work) even when no GGUF has been mounted yet —
+    matches the walking-skeleton-first protocol. The Dockerfile sets
+    a sensible default path (`/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf`)
+    so production with a volume-mount needs zero env config; CI smoke
+    tests without that volume get the stub automatically.
 
-    Model path set ⇒ the real LlamaCppRunner. Imported lazily so
-    `import vorrat_classifier.main` doesn't pay the llama_cpp
+    Model path set AND file exists ⇒ the real LlamaCppRunner. Imported
+    lazily so `import off_classifier.main` doesn't pay the llama_cpp
     initialisation cost when running tests against the stub.
     """
-    if settings.model_path is None:
+    from pathlib import Path  # noqa: PLC0415
+
+    if settings.model_path is None or not Path(settings.model_path).is_file():
+        if settings.model_path is not None:
+            log.warning(
+                "model_path %s does not point to a file; running as stub",
+                settings.model_path,
+            )
         return _UnloadedStub()
 
     # Lazy import: tests against the stub never pay the llama_cpp
     # initialisation cost, and importers of this module that don't
     # have llama_cpp built locally still get a working healthz path.
-    from vorrat_classifier.inference.llama_runner import LlamaCppRunner  # noqa: PLC0415
+    from off_classifier.inference.llama_runner import LlamaCppRunner  # noqa: PLC0415
 
     return LlamaCppRunner(
         model_path=settings.model_path,
@@ -89,7 +99,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="vorrat-classifier",
+        title="open-food-facts-classifier",
         version=__version__,
         description=(
             "Local LLM-backed product-category classifier for Vorrat. "

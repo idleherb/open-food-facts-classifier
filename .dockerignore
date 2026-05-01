@@ -9,7 +9,8 @@ coverage.xml
 __pycache__
 *.pyc
 tests
-README.md
+# README.md kept in the build context — pyproject.toml references it
+# as `readme = "README.md"` and hatchling reads it during `uv pip install`.
 CHANGELOG.md
 docs
 models

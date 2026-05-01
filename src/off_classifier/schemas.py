@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from vorrat_classifier.taxonomy import Category
+from off_classifier.taxonomy import Category
 
 
 class ClassifyRequest(BaseModel):

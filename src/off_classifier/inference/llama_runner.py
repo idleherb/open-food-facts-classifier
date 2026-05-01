@@ -14,12 +14,12 @@ from typing import Any, cast
 
 from llama_cpp import Llama, LlamaGrammar
 
-from vorrat_classifier.inference.prompts import (
+from off_classifier.inference.prompts import (
     build_chat_messages,
     build_grammar,
     parse_response_text,
 )
-from vorrat_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.schemas import ClassifyRequest, ClassifyResponse
 
 
 class LlamaCppRunner:

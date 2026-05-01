@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from vorrat_classifier.taxonomy import (
+from off_classifier.taxonomy import (
     CATEGORY_DISPLAY_NAMES,
     all_categories,
 )

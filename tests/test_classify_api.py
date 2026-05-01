@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from httpx import ASGITransport, AsyncClient
 
+from off_classifier.main import create_app
 from tests.conftest import StubRunner
-from vorrat_classifier.main import create_app
 
 
 async def test_classify_happy_path(client: AsyncClient, stub_runner: StubRunner) -> None:

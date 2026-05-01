@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from vorrat_classifier.config import Settings, get_settings
+from off_classifier.config import Settings, get_settings
 
 
 def test_settings_default_has_no_model_path() -> None:
@@ -17,10 +17,10 @@ def test_settings_default_has_no_model_path() -> None:
 
 
 def test_settings_reads_from_prefixed_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("VORRAT_CLASSIFIER_MODEL_PATH", "/models/qwen.gguf")
-    monkeypatch.setenv("VORRAT_CLASSIFIER_N_CTX", "8192")
-    monkeypatch.setenv("VORRAT_CLASSIFIER_BUILD_CHANNEL", "stable")
-    monkeypatch.setenv("VORRAT_CLASSIFIER_BUILD_SHA", "abc1234")
+    monkeypatch.setenv("OFF_CLASSIFIER_MODEL_PATH", "/models/qwen.gguf")
+    monkeypatch.setenv("OFF_CLASSIFIER_N_CTX", "8192")
+    monkeypatch.setenv("OFF_CLASSIFIER_BUILD_CHANNEL", "stable")
+    monkeypatch.setenv("OFF_CLASSIFIER_BUILD_SHA", "abc1234")
     s = Settings()
     assert s.model_path == "/models/qwen.gguf"
     assert s.n_ctx == 8192

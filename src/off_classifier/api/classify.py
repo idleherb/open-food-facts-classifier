@@ -17,8 +17,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from vorrat_classifier.inference.runner import ClassifierRunner
-from vorrat_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.inference.runner import ClassifierRunner
+from off_classifier.schemas import ClassifyRequest, ClassifyResponse
 
 router = APIRouter(tags=["classify"])
 
@@ -58,7 +58,7 @@ async def classify(payload: ClassifyRequest, runner: RunnerDep) -> ClassifyRespo
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "classifier model not loaded — set VORRAT_CLASSIFIER_MODEL_PATH to a GGUF on disk"
+                "classifier model not loaded — set OFF_CLASSIFIER_MODEL_PATH to a GGUF on disk"
             ),
         )
     return runner.classify(payload)

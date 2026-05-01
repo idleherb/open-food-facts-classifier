@@ -1,6 +1,6 @@
 """End-to-end smoke test against a real GGUF.
 
-Skipped unless `VORRAT_CLASSIFIER_SMOKE_MODEL_PATH` is set in the env.
+Skipped unless `OFF_CLASSIFIER_SMOKE_MODEL_PATH` is set in the env.
 This is the only place the llama-cpp-python wrapper actually runs;
 the rest of the suite uses a stub via the runner.py Protocol seam.
 
@@ -10,7 +10,7 @@ Usage:
         --include "Qwen2.5-7B-Instruct-Q4_K_M.gguf" \\
         --local-dir ./models/
 
-    VORRAT_CLASSIFIER_SMOKE_MODEL_PATH=$(pwd)/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf \\
+    OFF_CLASSIFIER_SMOKE_MODEL_PATH=$(pwd)/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf \\
         pytest tests/test_smoke_real_model.py -v --no-cov
 
 Intentionally not part of the standard CI run — model load takes ~10s
@@ -24,14 +24,14 @@ import os
 
 import pytest
 
-from vorrat_classifier.schemas import ClassifyRequest
-from vorrat_classifier.taxonomy import all_categories
+from off_classifier.schemas import ClassifyRequest
+from off_classifier.taxonomy import all_categories
 
-MODEL_PATH = os.environ.get("VORRAT_CLASSIFIER_SMOKE_MODEL_PATH")
+MODEL_PATH = os.environ.get("OFF_CLASSIFIER_SMOKE_MODEL_PATH")
 
 pytestmark = pytest.mark.skipif(
     not MODEL_PATH,
-    reason="set VORRAT_CLASSIFIER_SMOKE_MODEL_PATH to run the real-model smoke test",
+    reason="set OFF_CLASSIFIER_SMOKE_MODEL_PATH to run the real-model smoke test",
 )
 
 
@@ -43,7 +43,7 @@ def runner():  # type: ignore[no-untyped-def]
     top) keeps the rest of the suite from even touching llama_cpp
     when the smoke test is skipped.
     """
-    from vorrat_classifier.inference.llama_runner import (  # noqa: PLC0415
+    from off_classifier.inference.llama_runner import (  # noqa: PLC0415
         LlamaCppRunner,
     )
 

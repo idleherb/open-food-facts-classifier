@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vorrat_classifier.schemas import ClassifyRequest
-from vorrat_classifier.taxonomy import (
+from off_classifier.schemas import ClassifyRequest
+from off_classifier.taxonomy import (
     CATEGORY_DISPLAY_NAMES,
     Category,
     all_categories,

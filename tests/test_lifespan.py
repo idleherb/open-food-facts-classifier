@@ -6,8 +6,8 @@ import pytest
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
-from vorrat_classifier.config import Settings
-from vorrat_classifier.main import _build_runner, _UnloadedStub, app, create_app
+from off_classifier.config import Settings
+from off_classifier.main import _build_runner, _UnloadedStub, app, create_app
 
 
 async def test_lifespan_attaches_unloaded_stub_when_no_model_path() -> None:
@@ -29,6 +29,15 @@ async def test_unloaded_stub_classify_raises() -> None:
 
 async def test_build_runner_returns_stub_for_no_model_path() -> None:
     runner = _build_runner(Settings(model_path=None))
+    assert isinstance(runner, _UnloadedStub)
+
+
+async def test_build_runner_returns_stub_when_model_file_missing() -> None:
+    """Container default sets MODEL_PATH=/models/...gguf — without a
+    volume mount that path doesn't exist. The lifespan must fall to
+    the stub and warn, not crash the app at startup.
+    """
+    runner = _build_runner(Settings(model_path="/nonexistent/no-such-file.gguf"))
     assert isinstance(runner, _UnloadedStub)
 
 

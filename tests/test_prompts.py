@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from vorrat_classifier.inference.prompts import (
+from off_classifier.inference.prompts import (
     build_chat_messages,
     build_grammar,
     parse_response_text,
 )
-from vorrat_classifier.schemas import ClassifyRequest
-from vorrat_classifier.taxonomy import all_categories
+from off_classifier.schemas import ClassifyRequest
+from off_classifier.taxonomy import all_categories
 
 
 def test_build_grammar_lists_all_16_categories() -> None:

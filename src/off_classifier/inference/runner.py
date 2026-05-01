@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from vorrat_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.schemas import ClassifyRequest, ClassifyResponse
 
 
 @runtime_checkable

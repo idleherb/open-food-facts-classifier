@@ -1,0 +1,119 @@
+name: canary
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: canary
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build-push:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute short SHA + commit date
+        id: meta
+        run: |
+          {
+            echo "sha7=$(git rev-parse --short=7 HEAD)"
+            echo "date=$(git log -1 --date=format:%Y.%-m.%-d --format=%cd HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build amd64 into the local Docker daemon FIRST so the smoke test
+      # can boot it (`load: true` requires single-arch). The push step
+      # below reuses the same cache, so the second build is essentially
+      # a re-tag-and-push.
+      - name: Build amd64 image locally for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: open-food-facts-classifier:smoke
+          build-args: |
+            VORRAT_BUILD_CHANNEL=canary
+            VORRAT_BUILD_SHA=${{ steps.meta.outputs.sha7 }}
+            VORRAT_BUILD_DATE=${{ steps.meta.outputs.date }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Smoke test — boot container, hit /healthz
+        run: |
+          set -euo pipefail
+          # No model mounted in CI — the walking-skeleton protocol says
+          # /healthz must answer regardless. /classify will return 503
+          # ("model not loaded"), which is the expected unloaded state.
+          # Real-model verification happens locally via tests/test_smoke_real_model.py
+          # against a 4.4 GB GGUF; CI never pulls that.
+          docker run -d --name classifier-smoke -p 8001:8001 open-food-facts-classifier:smoke
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8001/healthz > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          healthz=$(curl -fsS http://localhost:8001/healthz)
+          echo "healthz: $healthz"
+          echo "$healthz" | grep -q '"ok":true'
+          echo "$healthz" | grep -q '"channel":"canary"'
+          echo "$healthz" | grep -q "\"commit\":\"${{ steps.meta.outputs.sha7 }}\""
+          echo "$healthz" | grep -q '"model_loaded":false'
+          # /classify must 503 cleanly (not crash) when no model is mounted.
+          status=$(curl -s -o /tmp/body.json -w "%{http_code}" -X POST \
+            -H content-type:application/json \
+            -d '{"name":"Anything"}' \
+            http://localhost:8001/classify)
+          echo "/classify status: $status"
+          [ "$status" = "503" ]
+          grep -q "model not loaded" /tmp/body.json
+
+      - name: Show container logs on smoke failure
+        if: failure()
+        run: docker logs classifier-smoke || true
+
+      - name: Stop smoke container
+        if: always()
+        run: docker rm -f classifier-smoke || true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/open-food-facts-classifier:canary-latest
+            ghcr.io/${{ github.repository_owner }}/open-food-facts-classifier:canary-${{ steps.meta.outputs.sha7 }}
+          build-args: |
+            VORRAT_BUILD_CHANNEL=canary
+            VORRAT_BUILD_SHA=${{ steps.meta.outputs.sha7 }}
+            VORRAT_BUILD_DATE=${{ steps.meta.outputs.date }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
