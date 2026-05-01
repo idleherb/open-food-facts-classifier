@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+.coverage
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+dist/
+*.egg-info/
+
+# Models — never commit GGUF blobs (4-5 GB). Mounted via volume in
+# production, downloaded into ./models/ for local runs.
+models/
+*.gguf
+
+# Local env overrides
+.env
+.env.local
