@@ -1,7 +1,16 @@
 """Runtime settings, loaded from environment variables.
 
-Defaults assume the production layout: model file mounted into
-`/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf` by Docker volume.
+Production layout: the lifespan auto-downloads the GGUF specified by
+``model_repo``/``model_filename`` from HuggingFace Hub into the
+``HF_HOME`` cache (defaults to ``/models/hf_cache`` in the container,
+backed by a named volume). First start pulls ~4.4 GB; subsequent
+starts hit the cache and load in seconds.
+
+This matches the pattern used by sentence-transformers in vorrat
+(``VORRAT_EMBEDDING_MODEL_ID=BAAI/bge-m3`` self-pulling into
+``vorrat_canary_hf``). The optional ``model_path_override`` exists
+for tests and ``docker cp``-style scenarios where the operator wants
+to bypass the download entirely.
 """
 
 from __future__ import annotations
@@ -17,11 +26,27 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Path to the GGUF on disk. None ⇒ /classify returns a structured
-    # 503 ("model not loaded"); the rest of the API surface still works
-    # so deployments + healthz can be verified before the model is in
-    # place. This matches the walking-skeleton-first protocol.
-    model_path: str | None = None
+    # HuggingFace Hub source for auto-download. Empty string disables
+    # the auto-download path entirely — the service then falls back
+    # to model_path_override (if given) or the unloaded stub.
+    # `bartowski` is the de-facto community-trusted GGUF repacker;
+    # their build is imatrix-calibrated which improves Q4 quality
+    # vs the upstream Qwen GGUF for the same nominal quantisation.
+    model_repo: str = Field(default="bartowski/Qwen2.5-7B-Instruct-GGUF")
+
+    # Specific quant + filename inside the repo. GGUF repos host
+    # multiple variants (Q4_K_M, Q5_K_M, Q6_K, …); we have to name
+    # the exact file. Q4_K_M is the recommended sweet-spot — fits
+    # ~5 GB resident, near-Q5 quality on this task.
+    model_filename: str = Field(default="Qwen2.5-7B-Instruct-Q4_K_M.gguf")
+
+    # Optional explicit GGUF path, takes precedence over auto-download.
+    # Useful for: (a) tests against a small model without HF, (b) air-
+    # gapped hosts where the operator copied a GGUF in via docker cp,
+    # (c) iterating on a custom finetune. Setting this disables the
+    # auto-download entirely; the file is loaded if it exists, stub
+    # otherwise.
+    model_path_override: str | None = None
 
     # Context window. Qwen 2.5 supports 128k natively; we only feed
     # ~200 tokens of prompt + ~10 tokens of output, so 4k is plenty.

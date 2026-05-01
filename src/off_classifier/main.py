@@ -17,39 +17,85 @@ from off_classifier.schemas import HealthzResponse
 log = logging.getLogger(__name__)
 
 
-def _build_runner(settings: Settings) -> ClassifierRunner:
-    """Construct the runner appropriate for the current settings.
+def _resolve_model_path(settings: Settings) -> str | None:
+    """Locate the GGUF on disk, downloading from HuggingFace if needed.
 
-    No model path OR the file isn't on disk ⇒ a tiny stub that always
-    reports `is_loaded=False` and refuses to classify. This keeps the
-    service deployable (healthz answers, container starts, k8s
-    readiness probes work) even when no GGUF has been mounted yet —
-    matches the walking-skeleton-first protocol. The Dockerfile sets
-    a sensible default path (`/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf`)
-    so production with a volume-mount needs zero env config; CI smoke
-    tests without that volume get the stub automatically.
+    Resolution order:
+      1. ``model_path_override`` set + file exists ⇒ use it directly.
+      2. ``model_path_override`` set + file *missing* ⇒ stub (and warn).
+         The override semantically means "skip auto-download", so a
+         missing file is the operator's bug, not ours to paper over.
+      3. ``model_repo`` empty ⇒ stub. The operator explicitly disabled
+         auto-download without providing an override.
+      4. Otherwise: ``hf_hub_download(model_repo, model_filename)``.
+         HuggingFace handles caching via HF_HOME (set in the Dockerfile
+         to ``/models/hf_cache``, backed by a named volume), so the
+         second container start hits the cache and is fast. HF_TOKEN
+         is read by ``huggingface_hub`` from the env automatically.
 
-    Model path set AND file exists ⇒ the real LlamaCppRunner. Imported
-    lazily so `import off_classifier.main` doesn't pay the llama_cpp
-    initialisation cost when running tests against the stub.
+    Any exception during download is caught and logged; we fall to the
+    stub rather than crashing the container at startup. Watchtower
+    rolling forward to a known-bad classifier release shouldn't take
+    the service offline; it should degrade silently to "OFF-only" on
+    the vorrat side.
     """
     from pathlib import Path  # noqa: PLC0415
 
-    if settings.model_path is None or not Path(settings.model_path).is_file():
-        if settings.model_path is not None:
-            log.warning(
-                "model_path %s does not point to a file; running as stub",
-                settings.model_path,
-            )
+    if settings.model_path_override:
+        path = Path(settings.model_path_override)
+        if path.is_file():
+            return str(path)
+        log.warning(
+            "model_path_override %s is set but no file there; running as stub",
+            settings.model_path_override,
+        )
+        return None
+
+    if not settings.model_repo:
+        log.warning(
+            "model_repo empty and no model_path_override set; running as stub",
+        )
+        return None
+
+    # Lazy import — keeps the unit-test suite import-free of huggingface_hub
+    # internals and lets a stub-only container omit the dep download too.
+    from huggingface_hub import hf_hub_download  # noqa: PLC0415
+    from huggingface_hub.errors import HfHubHTTPError  # noqa: PLC0415
+
+    try:
+        return hf_hub_download(
+            repo_id=settings.model_repo,
+            filename=settings.model_filename,
+        )
+    except (HfHubHTTPError, OSError, ValueError) as exc:
+        # HfHubHTTPError covers 404 (wrong repo/file), 401 (token bad),
+        # 403 (gated), 429, 5xx. OSError covers offline / DNS failures.
+        # ValueError covers malformed config. Everything else propagates.
+        log.warning(
+            "HF download of %s/%s failed (%s); running as stub",
+            settings.model_repo,
+            settings.model_filename,
+            exc,
+        )
+        return None
+
+
+def _build_runner(settings: Settings) -> ClassifierRunner:
+    """Resolve a GGUF (or fall to stub) and wrap it in a runner.
+
+    The file-resolution dance lives in ``_resolve_model_path``; this
+    function only decides "stub vs llama-cpp" once the path question
+    is settled. Lazy-imports LlamaCppRunner so test suites that never
+    touch the real path don't pay the llama_cpp init cost.
+    """
+    path = _resolve_model_path(settings)
+    if path is None:
         return _UnloadedStub()
 
-    # Lazy import: tests against the stub never pay the llama_cpp
-    # initialisation cost, and importers of this module that don't
-    # have llama_cpp built locally still get a working healthz path.
     from off_classifier.inference.llama_runner import LlamaCppRunner  # noqa: PLC0415
 
     return LlamaCppRunner(
-        model_path=settings.model_path,
+        model_path=path,
         n_ctx=settings.n_ctx,
         n_threads=settings.n_threads,
         max_output_tokens=settings.max_output_tokens,

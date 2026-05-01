@@ -48,7 +48,11 @@ COPY pyproject.toml ./
 
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
-ENV OFF_CLASSIFIER_MODEL_PATH="/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+# HuggingFace caches model snapshots under HF_HOME/hub/...
+# Pointing it at /models means the GGUF lands in the named volume
+# the operator mounts there, persisting across container restarts.
+# First start downloads ~4.4 GB; subsequent starts hit the cache.
+ENV HF_HOME="/models/hf_cache"
 ENV PYTHONUNBUFFERED=1
 
 ARG VORRAT_BUILD_CHANNEL=dev

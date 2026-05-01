@@ -8,6 +8,16 @@ skipped unless `OFF_CLASSIFIER_SMOKE_MODEL_PATH` is set.
 
 from __future__ import annotations
 
+import os
+
+# Disable HF auto-download for the entire suite by default — production
+# code's `_resolve_model_path` reads OFF_CLASSIFIER_MODEL_REPO at the
+# moment Settings is instantiated, so we set it BEFORE any test imports
+# off_classifier.config (which happens transitively via off_classifier.main
+# below). Tests that want to verify the auto-download path mock
+# `huggingface_hub.hf_hub_download` explicitly.
+os.environ.setdefault("OFF_CLASSIFIER_MODEL_REPO", "")
+
 from collections.abc import AsyncIterator
 
 import pytest

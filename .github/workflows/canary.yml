@@ -59,12 +59,14 @@ jobs:
       - name: Smoke test — boot container, hit /healthz
         run: |
           set -euo pipefail
-          # No model mounted in CI — the walking-skeleton protocol says
-          # /healthz must answer regardless. /classify will return 503
-          # ("model not loaded"), which is the expected unloaded state.
-          # Real-model verification happens locally via tests/test_smoke_real_model.py
-          # against a 4.4 GB GGUF; CI never pulls that.
-          docker run -d --name classifier-smoke -p 8001:8001 open-food-facts-classifier:smoke
+          # CI smoke disables the HF auto-download (empty MODEL_REPO);
+          # the walking-skeleton path must answer /healthz regardless,
+          # and /classify must 503 cleanly. Real-model verification
+          # happens locally via tests/test_smoke_real_model.py against
+          # a 4.4 GB GGUF; CI never pulls that.
+          docker run -d --name classifier-smoke -p 8001:8001 \
+            -e OFF_CLASSIFIER_MODEL_REPO="" \
+            open-food-facts-classifier:smoke
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:8001/healthz > /dev/null 2>&1; then
               break

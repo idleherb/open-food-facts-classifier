@@ -67,7 +67,11 @@ jobs:
       - name: Smoke test — boot container, hit /healthz, expect 503 on /classify
         run: |
           set -euo pipefail
-          docker run -d --name classifier-smoke -p 8001:8001 open-food-facts-classifier:smoke
+          # MODEL_REPO="" disables the HF auto-download for the smoke;
+          # the production stack mounts a volume + lets HF populate it.
+          docker run -d --name classifier-smoke -p 8001:8001 \
+            -e OFF_CLASSIFIER_MODEL_REPO="" \
+            open-food-facts-classifier:smoke
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:8001/healthz > /dev/null 2>&1; then
               break
