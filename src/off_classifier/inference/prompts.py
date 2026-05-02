@@ -47,7 +47,6 @@ _BUCKET_DEFINITIONS: dict[Category, str] = {
     ),
     "tiefkuehl": "Tiefkühlware: TK-Pizza, TK-Gemüse, Eis, TK-Fertiggerichte.",
     "brot_backwaren": "Brot, Brötchen, Toast, Croissants, fertige Backwaren.",
-    "babynahrung": "Säuglingsnahrung, Babybrei, Beikost, Folgemilch.",
     "hygiene_haushalt": (
         "Waschmittel, Reiniger, Toilettenpapier, Zahnpasta, Seife — kein Lebensmittel."
     ),
@@ -58,8 +57,8 @@ _BUCKET_DEFINITIONS: dict[Category, str] = {
 # Few-shot examples: real-shaped product descriptions paired with the
 # correct bucket. The model sees these BEFORE the new product, so it
 # anchors on the format. Examples are chosen to span easy + tricky
-# cases (plant milk → milchprodukte, baby food → babynahrung even
-# when it'd otherwise look like a yogurt or fruit puree).
+# cases (plant milk → milchprodukte landing in the dairy bucket as a
+# substitute, TK-anything overriding the inner category).
 _FEW_SHOT_EXAMPLES: tuple[tuple[ClassifyRequest, Category], ...] = (
     (
         ClassifyRequest(name="Mehl Type 405", brand="Aurora"),
@@ -116,14 +115,6 @@ _FEW_SHOT_EXAMPLES: tuple[tuple[ClassifyRequest, Category], ...] = (
         "brot_backwaren",
     ),
     (
-        ClassifyRequest(
-            name="Anfangsmilch Pre",
-            brand="HiPP",
-            generic_name="Säuglingsnahrung",
-        ),
-        "babynahrung",
-    ),
-    (
         ClassifyRequest(name="Spülmaschinentabs", brand="Finish"),
         "hygiene_haushalt",
     ),
@@ -163,15 +154,13 @@ def _system_message() -> str:
     )
     return (
         "Du klassifizierst Lebensmittel und Haushaltsprodukte in genau eine "
-        "von 16 Kategorien für eine Vorratsapp. Antworte NUR mit der ID der "
+        "von 15 Kategorien für eine Vorratsapp. Antworte NUR mit der ID der "
         "Kategorie (snake_case, ohne Anführungszeichen, ohne weitere Wörter).\n\n"
         "Kategorien:\n"
         f"{bucket_lines}\n\n"
         "Wichtige Regeln:\n"
         "- Pflanzenmilch und vegane Käsealternativen → milchprodukte (Substitute "
         "  landen im Bucket der Original-Kategorie).\n"
-        "- Babynahrung schlägt alles andere (ein Babyjoghurt ist babynahrung, "
-        "  nicht milchprodukte).\n"
         "- Tiefkühlware schlägt die Inhaltskategorie (TK-Lasagne ist tiefkuehl, "
         "  nicht fleisch_fisch).\n"
         "- Verwende sonstiges nur, wenn wirklich nichts passt (sehr selten)."

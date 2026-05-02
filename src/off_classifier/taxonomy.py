@@ -1,9 +1,12 @@
-"""The 16-bucket UI taxonomy — kept byte-identical with the corresponding
+"""The 15-bucket UI taxonomy — kept byte-identical with the corresponding
 file in the `vorrat` repo (`src/vorrat/classifier/categories.py`). When
 either side bumps the taxonomy, both sides MUST bump in lock-step in
 the same calendar day; the GBNF grammar in this service is generated
 from this list, and a drift between services would let a category land
 in the DB that the classifier can't return.
+
+Babynahrung was dropped 2026-05-02 per Eric's call (vorrat ADR-0033) —
+the household doesn't need the bucket. Down from 16 to 15.
 
 A future commit will likely extract the taxonomy into a tiny shared
 package or a single OpenAPI-served endpoint; for now duplication keeps
@@ -29,7 +32,6 @@ Category = Literal[
     "fleisch_fisch",
     "tiefkuehl",
     "brot_backwaren",
-    "babynahrung",
     "hygiene_haushalt",
     "sonstiges",
 ]
@@ -49,7 +51,6 @@ CATEGORY_DISPLAY_NAMES: dict[Category, str] = {
     "fleisch_fisch": "Fleisch & Fisch",
     "tiefkuehl": "Tiefkühl",
     "brot_backwaren": "Brot & Backwaren",
-    "babynahrung": "Babynahrung",
     "hygiene_haushalt": "Hygiene & Haushalt",
     "sonstiges": "Sonstiges",
 }
@@ -70,7 +71,6 @@ def all_categories() -> tuple[Category, ...]:
         "fleisch_fisch",
         "tiefkuehl",
         "brot_backwaren",
-        "babynahrung",
         "hygiene_haushalt",
         "sonstiges",
     )

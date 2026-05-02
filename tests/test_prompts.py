@@ -32,7 +32,7 @@ def test_build_grammar_is_pipe_separated() -> None:
 def test_build_chat_messages_starts_with_system() -> None:
     msgs = build_chat_messages(ClassifyRequest(name="Mehl"))
     assert msgs[0]["role"] == "system"
-    # System prompt must mention all 16 buckets so the model sees them.
+    # System prompt must mention all 15 buckets so the model sees them.
     system = msgs[0]["content"]
     for cat in all_categories():
         assert cat in system
@@ -40,9 +40,11 @@ def test_build_chat_messages_starts_with_system() -> None:
 
 def test_build_chat_messages_includes_few_shot_pairs() -> None:
     msgs = build_chat_messages(ClassifyRequest(name="Mehl"))
-    # Each example contributes (user, assistant); 15 examples ⇒ 30 turns
-    # plus 1 system + 1 final user = 32 messages.
-    assert len(msgs) == 32
+    # Each example contributes (user, assistant); 14 examples ⇒ 28 turns
+    # plus 1 system + 1 final user = 30 messages. (Down from 32 after
+    # Babynahrung was dropped 2026-05-02; the few-shot example for it
+    # went away with the bucket.)
+    assert len(msgs) == 30
     # Last message is the actual query.
     assert msgs[-1]["role"] == "user"
     assert "Mehl" in msgs[-1]["content"]

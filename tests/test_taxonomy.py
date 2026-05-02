@@ -1,4 +1,8 @@
-"""Lock the 16-bucket taxonomy in lock-step with vorrat's copy."""
+"""Lock the 15-bucket taxonomy in lock-step with vorrat's copy.
+
+Started at 16 buckets (ADR-0031). Babynahrung dropped 2026-05-02
+per vorrat ADR-0033. Down to 15.
+"""
 
 from __future__ import annotations
 
@@ -10,11 +14,12 @@ from off_classifier.taxonomy import (
 )
 
 
-def test_taxonomy_has_exactly_16_buckets() -> None:
-    """ADR-0031 fixes the count at 16. A change here without a
-    matching ADR + drop-in change in vorrat is a bug.
+def test_taxonomy_has_exactly_15_buckets() -> None:
+    """ADR-0031 set the count at 16; vorrat ADR-0033 dropped
+    Babynahrung 2026-05-02. A change here without a matching ADR +
+    drop-in change in vorrat is a bug.
     """
-    assert len(all_categories()) == 16
+    assert len(all_categories()) == 15
 
 
 def test_taxonomy_ids_are_unique() -> None:
