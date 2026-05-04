@@ -73,12 +73,20 @@ each classification is sub-second on a modern x86_64 CPU
 
 ## Production deployment
 
-Compose snippet (lives next to vorrat's compose):
+Single-track sidecar: every push to `main` builds + publishes `:latest`
+to GHCR (`build.yml`). The consuming `vorrat-services` TrueNAS app
+stack pulls `:latest`; Watchtower swaps the running container within
+its poll interval. No canary/stable split, no version tags, no release
+ceremony — sidecars are infrequently redeployed and the vorrat app
+degrades gracefully if the classifier is briefly unreachable
+(503 → "unklassifiziert" fall-through).
+
+Compose snippet (lives in the `vorrat-services` stack on TrueNAS):
 
 ```yaml
 services:
   classifier:
-    image: ghcr.io/idleherb/open-food-facts-classifier:stable-latest
+    image: ghcr.io/idleherb/open-food-facts-classifier:latest
     restart: unless-stopped
     volumes:
       - ./models:/models:ro

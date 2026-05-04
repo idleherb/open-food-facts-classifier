@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Single-track deployment: only `:latest`, no canary/stable split.**
+  The previous `canary.yml` + `stable.yml` workflows assumed the same
+  dual-channel model the vorrat app uses, but sidecars don't carry the
+  same blast radius — a brief flicker of the classifier container only
+  causes vorrat scans to fall through to "unklassifiziert" until the
+  next pull, which is acceptable. New layout: a single `build.yml`
+  runs on every push to `main`, builds + smoke-tests + publishes
+  `ghcr.io/idleherb/open-food-facts-classifier:latest`. No `/release`
+  slash command, no CalVer tagging, no `__version__` bumps tied to a
+  release. Watchtower on the `vorrat-services` TrueNAS stack picks up
+  the new image via its poll interval. `OFF_CLASSIFIER_BUILD_CHANNEL`
+  is now set to `"main"` in the build args (instead of `"canary"` /
+  `"stable"`); existing `:canary-*` and `:stable-*` tags on GHCR are
+  left in place for archeology but no longer get new pushes.
+
 ### Added
 
 - **HuggingFace Hub auto-download for the GGUF.** New settings
