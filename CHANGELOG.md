@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Default uvicorn log level set to `warning`.** The per-request
+  access log was emitting one INFO line per `/healthz` poll
+  (~12/min from Watchtower alone, plus the vorrat app's classifier
+  heartbeat), drowning the actual lifespan + LLM-load events that
+  matter when something breaks. Per the parent vorrat CLAUDE.md
+  hard rule 10, production log level is WARNING + errors only;
+  override with `--log-level info` at run time when actively
+  debugging. Application code itself only emits `log.warning(...)`,
+  so the only effect is cutting the access-log noise from the
+  `/healthz` and `/classify` endpoints.
+
 - **Single-track deployment: only `:latest`, no canary/stable split.**
   The previous `canary.yml` + `stable.yml` workflows assumed the same
   dual-channel model the vorrat app uses, but sidecars don't carry the

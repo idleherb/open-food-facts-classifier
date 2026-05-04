@@ -77,4 +77,9 @@ EXPOSE 8001
 
 # uvicorn binds to 0.0.0.0 inside the container; the host's reverse
 # proxy (Caddy with TLS) decides who gets to see it externally.
-CMD ["uvicorn", "off_classifier.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# --log-level warning silences the per-request access log (one INFO
+# line per /healthz poll = 12/min from Watchtower + the vorrat app's
+# heartbeat); per the parent vorrat CLAUDE.md hard rule 10 production
+# log level is WARNING+errors only. Override with `--log-level info`
+# at run time when actively debugging.
+CMD ["uvicorn", "off_classifier.main:app", "--host", "0.0.0.0", "--port", "8001", "--log-level", "warning"]
