@@ -1,4 +1,11 @@
-name: canary
+name: build
+
+# Sidecar deployment model: every push to main builds + publishes a
+# single `:latest` image to GHCR. No canary/stable split, no version
+# tags, no `/release` flow — sidecars don't carry the same blast radius
+# as the vorrat app itself, and the consuming `vorrat-services`
+# TrueNAS app stack pulls `:latest` via Watchtower. See
+# `feedback_releases_user_only.md` (vorrat memory) for the rationale.
 
 on:
   push:
@@ -9,7 +16,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: canary
+  group: build
   cancel-in-progress: false
 
 env:
@@ -49,7 +56,7 @@ jobs:
           load: true
           tags: open-food-facts-classifier:smoke
           build-args: |
-            VORRAT_BUILD_CHANNEL=canary
+            VORRAT_BUILD_CHANNEL=main
             VORRAT_BUILD_SHA=${{ steps.meta.outputs.sha7 }}
             VORRAT_BUILD_DATE=${{ steps.meta.outputs.date }}
           cache-from: type=gha
@@ -76,7 +83,7 @@ jobs:
           healthz=$(curl -fsS http://localhost:8001/healthz)
           echo "healthz: $healthz"
           echo "$healthz" | grep -q '"ok":true'
-          echo "$healthz" | grep -q '"channel":"canary"'
+          echo "$healthz" | grep -q '"channel":"main"'
           echo "$healthz" | grep -q "\"commit\":\"${{ steps.meta.outputs.sha7 }}\""
           echo "$healthz" | grep -q '"model_loaded":false'
           # /classify must 503 cleanly (not crash) when no model is mounted.
@@ -103,17 +110,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (amd64)
+      - name: Build and push (amd64) as :latest
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/open-food-facts-classifier:canary-latest
-            ghcr.io/${{ github.repository_owner }}/open-food-facts-classifier:canary-${{ steps.meta.outputs.sha7 }}
+            ghcr.io/${{ github.repository_owner }}/open-food-facts-classifier:latest
           build-args: |
-            VORRAT_BUILD_CHANNEL=canary
+            VORRAT_BUILD_CHANNEL=main
             VORRAT_BUILD_SHA=${{ steps.meta.outputs.sha7 }}
             VORRAT_BUILD_DATE=${{ steps.meta.outputs.date }}
           cache-from: type=gha
