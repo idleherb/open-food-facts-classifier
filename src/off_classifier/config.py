@@ -32,13 +32,18 @@ class Settings(BaseSettings):
     # `bartowski` is the de-facto community-trusted GGUF repacker;
     # their build is imatrix-calibrated which improves Q4 quality
     # vs the upstream Qwen GGUF for the same nominal quantisation.
-    model_repo: str = Field(default="bartowski/Qwen2.5-7B-Instruct-GGUF")
+    model_repo: str = Field(default="bartowski/Qwen2.5-14B-Instruct-GGUF")
 
     # Specific quant + filename inside the repo. GGUF repos host
     # multiple variants (Q4_K_M, Q5_K_M, Q6_K, …); we have to name
-    # the exact file. Q4_K_M is the recommended sweet-spot — fits
-    # ~5 GB resident, near-Q5 quality on this task.
-    model_filename: str = Field(default="Qwen2.5-7B-Instruct-Q4_K_M.gguf")
+    # the exact file. Q4_K_M is the recommended sweet-spot — for
+    # 14B that lands at ~9 GB resident, near-Q5 quality. Bumped from
+    # 7B (~4.4 GB) to 14B (~9 GB) on 2026-05-10 after a 25-item eval
+    # of /lebensmittel showed 7B confabulating on German specialty
+    # terms (Quark vs Yogurt, mildgesäuerte Butter, etc.) and
+    # producing constructed en:-tags rather than using the OFF-tags
+    # from the input verbatim. ADR-0038 §4.1 budgeted for this.
+    model_filename: str = Field(default="Qwen2.5-14B-Instruct-Q4_K_M.gguf")
 
     # Optional explicit GGUF path, takes precedence over auto-download.
     # Useful for: (a) tests against a small model without HF, (b) air-

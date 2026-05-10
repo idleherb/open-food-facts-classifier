@@ -7,15 +7,17 @@ import pytest
 from off_classifier.config import Settings, get_settings
 
 
-def test_settings_defaults_target_qwen_25_7b_q4km() -> None:
+def test_settings_defaults_target_qwen_25_14b_q4km() -> None:
     """The container ships a default that "just works" if the operator
-    has no env overrides — points at the bartowski Qwen2.5-7B Q4_K_M
-    GGUF, which is the production sweet-spot per ADR-0031."""
+    has no env overrides — points at the bartowski Qwen2.5-14B Q4_K_M
+    GGUF (bumped from 7B on 2026-05-10 after the /lebensmittel eval
+    showed 7B confabulation on German specialty terms; ADR-0038 §4.1
+    budgeted ~9 GB resident for this)."""
     # conftest sets OFF_CLASSIFIER_MODEL_REPO="" suite-wide; check the
     # baked-in defaults directly.
-    s = Settings(model_repo="bartowski/Qwen2.5-7B-Instruct-GGUF")
-    assert s.model_repo == "bartowski/Qwen2.5-7B-Instruct-GGUF"
-    assert s.model_filename == "Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+    s = Settings(model_repo="bartowski/Qwen2.5-14B-Instruct-GGUF")
+    assert s.model_repo == "bartowski/Qwen2.5-14B-Instruct-GGUF"
+    assert s.model_filename == "Qwen2.5-14B-Instruct-Q4_K_M.gguf"
     assert s.model_path_override is None
     assert s.n_ctx == 4096
     assert s.n_threads is None

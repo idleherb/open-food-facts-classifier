@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+### Changed — Model upgrade Qwen 7B → Qwen 14B (2026-05-10, eval-driven)
+
+- Default `OFF_CLASSIFIER_MODEL_REPO` bumped from
+  `bartowski/Qwen2.5-7B-Instruct-GGUF` to
+  `bartowski/Qwen2.5-14B-Instruct-GGUF`; `OFF_CLASSIFIER_MODEL_FILENAME`
+  from `Qwen2.5-7B-Instruct-Q4_K_M.gguf` to
+  `Qwen2.5-14B-Instruct-Q4_K_M.gguf`. RAM resident climbs from
+  ~4.4 GB to ~9 GB; ADR-0038 §4.1 explicitly budgeted for this.
+- Rationale: after two prompt-tuning rounds on the 7B model,
+  `/lebensmittel` plateaued at 6/25 → 4/25 wrong items on a fixed
+  eval set, with residual errors clustering around (a) German
+  specialty term confusion (Quark vs Yogurt, mildgesäuerte vs
+  unsalted Butter) and (b) constructed `en:`-tags in places where
+  the OFF input tags carried the right answer verbatim. Both are
+  symptoms of the model's representation, not the prompt's clarity.
+  14B has measurably better German specialty-term and
+  context-faithfulness in this size class.
+- Container restart after Watchtower swap will trigger an HF
+  download of the new ~9 GB GGUF (~5-10 min on a typical home
+  connection); old 7B GGUF stays in the cache volume but is no
+  longer referenced. To revert, set `OFF_CLASSIFIER_MODEL_REPO`
+  back to `bartowski/Qwen2.5-7B-Instruct-GGUF` and the matching
+  filename via env vars in TrueNAS.
+- Re-eval on the same 25-item set will be reported in the vorrat
+  repo (`docs/research/lebensmittel-classifier-eval.md`) once the
+  new model is live.
+
 ### Changed — Slice 4 prompt tuning after first eval (2026-05-10)
 
 - Sharpened the system-prompt with explicit negative examples for
