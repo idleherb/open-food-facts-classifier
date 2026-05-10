@@ -10,12 +10,25 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from off_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.schemas import (
+    ClassifyRequest,
+    ClassifyResponse,
+    LebensmittelRequest,
+    LebensmittelResponse,
+)
 
 
 @runtime_checkable
 class ClassifierRunner(Protocol):
-    """Anything that can turn a ClassifyRequest into a ClassifyResponse."""
+    """Anything that can turn a ClassifyRequest into a ClassifyResponse,
+    plus (vorrat ADR-0038) a LebensmittelRequest into a
+    LebensmittelResponse.
+
+    Both methods share the same Llama runtime and prompt-template
+    convention internally; splitting them at the Protocol level lets
+    the FastAPI routes use distinct request/response shapes and keeps
+    the few-shot examples for each surface independent.
+    """
 
     @property
     def model_id(self) -> str:
@@ -33,11 +46,21 @@ class ClassifierRunner(Protocol):
         """
 
     def classify(self, req: ClassifyRequest) -> ClassifyResponse:
-        """Run classification synchronously.
+        """Run 15-bucket-category classification synchronously.
 
         Implementations must populate ``inference_ms`` measuring only
         the time spent in the model call, not in prompt formatting
         or response parsing — that overhead is negligible and not
         what the caller wants visibility into.
+        """
+        ...
+
+    def lebensmittel(self, req: LebensmittelRequest) -> LebensmittelResponse:
+        """Run Lebensmittel-classification synchronously (vorrat ADR-0038).
+
+        Returns a namespaced lebensmittel-id (``en:<off-tag>`` or
+        ``vorrat:<slug>``). The fuller ADR-0038 §2a response shape
+        with alternatives + source discriminator is a follow-up
+        slice; this initial method surfaces the proposal only.
         """
         ...

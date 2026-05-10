@@ -62,3 +62,47 @@ class HealthzResponse(BaseModel):
     # return 503; the deployment is alive but unable to serve its
     # primary function. Useful for orchestration ("is this pod ready?").
     model_loaded: bool
+
+
+class LebensmittelRequest(BaseModel):
+    """Inputs to a Lebensmittel-classification call (vorrat ADR-0038 §2a).
+
+    Same shape as ``ClassifyRequest`` for the barcode-meta input path
+    so consumers can build on existing OFF integration. The fuller
+    receipt-token batch shape from ADR-0038 §2b is a separate slice;
+    this initial iteration ships the barcode-meta-shape only and is
+    enough to characterise classifier accuracy on the Lebensmittel
+    abstraction before we expand the consumer side.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=200)
+    brand: str | None = Field(default=None, max_length=200)
+    generic_name: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=500)
+    off_categories_tags: list[str] | None = Field(default=None, max_length=64)
+
+
+class LebensmittelResponse(BaseModel):
+    """Result of a single Lebensmittel-classification call.
+
+    `lebensmittel_id` is namespaced: `en:<off-tag-name>` for entries
+    that map to an Open Food Facts taxonomy node (the bulk of common
+    pantry items), `vorrat:<household-slug>` for niche or private-label
+    items the OFF taxonomy doesn't cover. The grammar guarantees one
+    of those two namespaces and a well-formed slug, but the slug
+    itself is not enumerated — the model may produce a previously-
+    unseen tag, which the consumer treats as a household-specific
+    new entry. Display-label resolution (German short-string) is the
+    consumer's responsibility (look up OFF taxonomy `de:` translation
+    or accept the user's free-text label).
+
+    The fuller ADR-0038 §2a response shape (with `alternatives` and a
+    `source ∈ {off, llm, correction}` discriminator) is a follow-up
+    slice; this initial endpoint surfaces only the proposal.
+    """
+
+    lebensmittel_id: str
+    model_id: str
+    inference_ms: int

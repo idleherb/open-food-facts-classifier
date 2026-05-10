@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from off_classifier import __version__
 from off_classifier.api.classify import router as classify_router
+from off_classifier.api.lebensmittel import router as lebensmittel_router
 from off_classifier.config import Settings, get_settings
 from off_classifier.inference.runner import ClassifierRunner
 from off_classifier.schemas import HealthzResponse
@@ -119,6 +120,11 @@ class _UnloadedStub:
         # bypass surfaces loudly rather than returning a fake answer.
         raise RuntimeError("classifier model not loaded")
 
+    def lebensmittel(self, req):  # type: ignore[no-untyped-def]
+        # Same short-circuit pattern as classify — /lebensmittel
+        # checks is_loaded and 503s before reaching this method.
+        raise RuntimeError("classifier model not loaded")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -174,6 +180,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(classify_router)
+    app.include_router(lebensmittel_router)
     return app
 
 

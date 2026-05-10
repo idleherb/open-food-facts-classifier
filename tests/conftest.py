@@ -27,30 +27,39 @@ from httpx import ASGITransport, AsyncClient
 from off_classifier.api.classify import get_runner
 from off_classifier.inference.runner import ClassifierRunner
 from off_classifier.main import app
-from off_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.schemas import (
+    ClassifyRequest,
+    ClassifyResponse,
+    LebensmittelRequest,
+    LebensmittelResponse,
+)
 from off_classifier.taxonomy import Category
 
 
 class StubRunner:
-    """Deterministic runner: returns a fixed category, regardless of input.
+    """Deterministic runner: returns a fixed category and a fixed
+    lebensmittel-id, regardless of input.
 
-    Configurable via `category` so tests can verify the response is
-    actually plumbed through (vs e.g. always returning 'sonstiges').
+    Configurable so tests can verify the response is actually plumbed
+    through (vs e.g. always returning 'sonstiges').
     """
 
     def __init__(
         self,
         *,
         category: Category = "sonstiges",
+        lebensmittel_id: str = "vorrat:stub",
         is_loaded: bool = True,
         model_id: str = "stub",
         inference_ms: int = 1,
     ) -> None:
         self._category = category
+        self._lebensmittel_id = lebensmittel_id
         self._is_loaded = is_loaded
         self._model_id = model_id
         self._inference_ms = inference_ms
         self.calls: list[ClassifyRequest] = []
+        self.lebensmittel_calls: list[LebensmittelRequest] = []
 
     @property
     def model_id(self) -> str:
@@ -64,6 +73,14 @@ class StubRunner:
         self.calls.append(req)
         return ClassifyResponse(
             category=self._category,
+            model_id=self._model_id,
+            inference_ms=self._inference_ms,
+        )
+
+    def lebensmittel(self, req: LebensmittelRequest) -> LebensmittelResponse:
+        self.lebensmittel_calls.append(req)
+        return LebensmittelResponse(
+            lebensmittel_id=self._lebensmittel_id,
             model_id=self._model_id,
             inference_ms=self._inference_ms,
         )

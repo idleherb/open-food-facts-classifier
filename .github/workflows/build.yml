@@ -94,6 +94,14 @@ jobs:
           echo "/classify status: $status"
           [ "$status" = "503" ]
           grep -q "model not loaded" /tmp/body.json
+          # /lebensmittel (vorrat ADR-0038) must also 503 cleanly without a model.
+          lstatus=$(curl -s -o /tmp/lbody.json -w "%{http_code}" -X POST \
+            -H content-type:application/json \
+            -d '{"name":"Anything"}' \
+            http://localhost:8001/lebensmittel)
+          echo "/lebensmittel status: $lstatus"
+          [ "$lstatus" = "503" ]
+          grep -q "model not loaded" /tmp/lbody.json
 
       - name: Show container logs on smoke failure
         if: failure()

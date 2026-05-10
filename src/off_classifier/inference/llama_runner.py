@@ -14,12 +14,22 @@ from typing import Any, cast
 
 from llama_cpp import Llama, LlamaGrammar
 
+from off_classifier.inference.lebensmittel_prompts import (
+    build_lebensmittel_chat_messages,
+    build_lebensmittel_grammar,
+    parse_lebensmittel_response,
+)
 from off_classifier.inference.prompts import (
     build_chat_messages,
     build_grammar,
     parse_response_text,
 )
-from off_classifier.schemas import ClassifyRequest, ClassifyResponse
+from off_classifier.schemas import (
+    ClassifyRequest,
+    ClassifyResponse,
+    LebensmittelRequest,
+    LebensmittelResponse,
+)
 
 
 class LlamaCppRunner:
@@ -53,8 +63,19 @@ class LlamaCppRunner:
             chat_format=None,
             verbose=False,
         )
-        # Pre-build grammar once: it's a static enum, no per-request work.
+        # Pre-build grammars once: both are static (the 15-bucket enum
+        # for /classify, the (en|vorrat):slug shape for /lebensmittel),
+        # no per-request work.
         self._grammar = LlamaGrammar.from_string(build_grammar(), verbose=False)
+        self._lebensmittel_grammar = LlamaGrammar.from_string(
+            build_lebensmittel_grammar(), verbose=False
+        )
+        # Lebensmittel-IDs can be longer than the 15-bucket category
+        # enum (longest enum: pasta_reis_koerner ≈ 7 tokens; longest
+        # plausible vorrat: slug ≈ 15-20 tokens). Bump max_output_tokens
+        # for the lebensmittel path; the cap stays modest because the
+        # grammar caps slug length at 40 chars anyway.
+        self._lebensmittel_max_output_tokens = max(max_output_tokens, 32)
 
     @property
     def model_id(self) -> str:
@@ -91,6 +112,26 @@ class LlamaCppRunner:
         category = parse_response_text(text)
         return ClassifyResponse(
             category=category,
+            model_id=self.model_id,
+            inference_ms=elapsed_ms,
+        )
+
+    def lebensmittel(self, req: LebensmittelRequest) -> LebensmittelResponse:
+        messages = build_lebensmittel_chat_messages(req)
+        started = time.monotonic()
+        result = self._llm.create_chat_completion(
+            messages=cast("Any", messages),
+            grammar=self._lebensmittel_grammar,
+            max_tokens=self._lebensmittel_max_output_tokens,
+            temperature=0.0,
+            stream=False,
+        )
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        response = cast("dict[str, Any]", result)
+        text = response["choices"][0]["message"]["content"] or ""
+        lebensmittel_id = parse_lebensmittel_response(text)
+        return LebensmittelResponse(
+            lebensmittel_id=lebensmittel_id,
             model_id=self.model_id,
             inference_ms=elapsed_ms,
         )

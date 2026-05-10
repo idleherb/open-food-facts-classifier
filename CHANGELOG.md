@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+### Added — Slice 4: `/lebensmittel` endpoint (vorrat ADR-0038 §2a, barcode-meta path)
+
+- New POST `/lebensmittel` endpoint, sharing the same Llama runtime
+  and GGUF as `/classify`. Maps a product (name/brand/generic_name/
+  off_categories_tags) to a Lebensmittel-id namespaced as either
+  `en:<off-tag>` or `vorrat:<household-slug>`. Different prompt +
+  few-shot examples + grammar from the 15-bucket category surface;
+  same Qwen 2.5-7B-Instruct GGUF, no second model load.
+- New schemas: `LebensmittelRequest`, `LebensmittelResponse`. Initial
+  iteration ships proposal-only (no `alternatives` / `source`
+  discriminator from ADR-0038 §2a) — those are a follow-up slice.
+- New module `inference/lebensmittel_prompts.py` with 15 few-shot
+  examples tuned to ADR-0037's granularity rule (form + ingredient
+  base distinguishes Lebensmittel; brand and Bio do not).
+- New GBNF grammar `(en|vorrat):<slug>` with slug 3..40 chars
+  lowercase ASCII + dashes. Permissive on slug content because we
+  don't enumerate the OFF taxonomy in code.
+- `ClassifierRunner` Protocol grows a `lebensmittel()` method;
+  `LlamaCppRunner` implements it; tests' `StubRunner` mirrors.
+- CI smoke gains a probe that asserts `/lebensmittel` returns 503
+  cleanly when no model is loaded (mirrors the existing /classify
+  probe).
+- 13 new unit tests; coverage 96.19 %.
+- Receipt-token batch path (ADR-0038 §2b) and full §2a alternatives
+  + correction-DB context + dynamic GBNF extension stay deferred —
+  this slice is enough to evaluate Lebensmittel-classifier accuracy
+  on barcode-meta inputs and to wire the vorrat-app barcode-scan
+  flow against.
+
 ### Changed
 
 - **Default uvicorn log level set to `warning`.** The per-request
