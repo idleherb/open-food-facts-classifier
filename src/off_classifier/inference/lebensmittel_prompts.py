@@ -106,6 +106,50 @@ _FEW_SHOT_EXAMPLES: tuple[tuple[LebensmittelRequest, str], ...] = (
         LebensmittelRequest(name="Kartoffelchips Paprika", brand="funny-frisch"),
         "en:paprika-crisps",
     ),
+    # Negative-pattern shots: explicit demonstrations of the rules
+    # that the v1 prompt got wrong on the 2026-05-10 eval. Each pattern
+    # is shown via a product that is NOT in the eval-set, so the next
+    # eval pass measures generalisation rather than memorisation.
+    (
+        # Bio-strip even when "bio" is the leading word in name + brand.
+        # (Pattern A: bio leaked into the slug in 2/25 eval cases.)
+        LebensmittelRequest(name="Bio Salami Mailaender Art", brand="Edeka Bio"),
+        "en:salami",
+    ),
+    (
+        # Brand-strip in the vorrat: namespace too. (Pattern B: brand
+        # leaked into a vorrat: slug in 1/25 eval cases.)
+        LebensmittelRequest(name="Iglo Bratkartoffeln Tiefkuehl", brand="Iglo"),
+        "vorrat:bratkartoffeln",
+    ),
+    (
+        # Packaging/cut info ("halbiert") does NOT enter the ID.
+        # (Pattern C: cut info leaked in 1/25.)
+        LebensmittelRequest(name="Brokkoli halbiert", generic_name="Frischer Brokkoli"),
+        "en:broccoli",
+    ),
+    (
+        # OFF tag explicitly present ⇒ MUST be used as en:; never
+        # invent a vorrat: slug when an OFF tag fits. (Pattern G:
+        # available OFF tag bypassed in 2/25.)
+        LebensmittelRequest(
+            name="Forelle gerauchert",
+            brand="Deutsche See",
+            off_categories_tags=["en:fish", "en:smoked-fish", "en:smoked-trout"],
+        ),
+        "en:smoked-trout",
+    ),
+    (
+        # Non-food: NEVER hallucinate an en:-tag for a concept outside
+        # the OFF taxonomy. The vorrat: namespace is the right place.
+        # (Pattern E: en:-tag hallucinated for non-food in 1/25.)
+        LebensmittelRequest(
+            name="Spuelmittel Zitrone",
+            brand="Pril",
+            off_categories_tags=None,
+        ),
+        "vorrat:dish-soap",
+    ),
 )
 
 
@@ -130,22 +174,33 @@ def _system_message() -> str:
         "Du klassifizierst Produkte zu einer Lebensmittel-Abstraktion fuer "
         "eine Vorratsapp. Antworte NUR mit der ID des Lebensmittels.\n\n"
         "Format der ID:\n"
-        "- en:<off-tag-name>  fuer Produkte, die in der Open-Food-Facts-Taxonomie "
-        "  einen passenden Knoten haben (z.B. en:fusilli, en:whole-milk, en:cheddar). "
-        "  Verwende den spezifischsten passenden OFF-Tag.\n"
-        "- vorrat:<slug>      fuer Produkte ohne klare OFF-Entsprechung (z.B. "
-        "  vorrat:schlemmerfilet-cordon-bleu fuer ein spezifisches Fertiggericht).\n\n"
-        "Slug-Regeln: lowercase, ASCII, Bindestriche zwischen Woertern, Laenge 3-40.\n\n"
-        "Granularitaets-Regeln (wichtig):\n"
+        "- en:<off-tag-name>  fuer Produkte mit Eintrag in der Open-Food-Facts-"
+        "  Taxonomie (z.B. en:fusilli, en:whole-milk, en:cheddar).\n"
+        "- vorrat:<slug>      fuer Produkte OHNE OFF-Entsprechung "
+        "  (Marken-Fertiggerichte, Spezialitaeten) UND fuer Produkte die kein "
+        "  Lebensmittel sind (Blumen, Drogerie, Zeitschriften).\n\n"
+        "Slug-Regeln: lowercase, ASCII, Bindestriche, Laenge 3-40.\n\n"
+        "Granularitaets-Regeln (HART, niemals brechen):\n"
         "- Form + Zutatenbasis bestimmen das Lebensmittel: Fusilli != Penne, "
-        "  Vollkorn-Fusilli != Weizen-Fusilli.\n"
-        "- Marke ist KEIN Unterscheidungsmerkmal: Alnatura-Fusilli und Barilla-"
-        "  Fusilli landen im selben Lebensmittel.\n"
-        "- Bio ist KEIN Unterscheidungsmerkmal: Bio-Vollmilch und konventionelle "
-        "  Vollmilch sind dasselbe Lebensmittel (en:whole-milk).\n"
-        "- Verpackungsgroesse ist KEIN Unterscheidungsmerkmal.\n"
-        "- Bei OFF-Tags: nimm einen der vorhandenen Tags (oft der spezifischste "
-        "  am Ende der Liste) als Basis fuer en:<tag>."
+        "Vollkorn != Weizen.\n"
+        "- Marke NIEMALS in der ID — auch nicht im vorrat:-Slug.\n"
+        "  Beispiel: Iglo Spinat → en:spinach (NICHT vorrat:iglo-spinat).\n"
+        "- Bio NIEMALS in der ID.\n"
+        "  Beispiel: Bio-Salami → en:salami (NICHT en:bio-salami).\n"
+        "  Beispiel: Bio-Karotten → en:carrots (NICHT en:bio-carrots).\n"
+        "- Verpackungsgroesse, Verpackungsform und Zuschnitt (Stueck, Scheiben, "
+        "halbiert, ganz, gerieben, fein, grob, dick, duenn) gehoeren NICHT in die ID.\n"
+        "  Beispiel: Brokkoli halbiert → en:broccoli (NICHT en:broccoli-halved).\n"
+        "- Wenn off_categories_tags einen passenden Tag enthaelt, MUSS dieser als "
+        "en:-ID verwendet werden — niemals einen vorrat:-Slug erfinden, wenn ein "
+        "OFF-Tag passt.\n"
+        "- Wenn das Produkt KEIN Lebensmittel ist (Schnittblumen, Putzmittel, "
+        "Zeitschrift), nutze vorrat:<slug> — niemals einen erfundenen en:-Tag fuer "
+        "Konzepte ausserhalb der OFF-Taxonomie.\n"
+        "- Bei OFF-Tags: bevorzuge den spezifischsten passenden Tag, oft am Ende "
+        "der Liste.\n"
+        "- Wenn unsicher zwischen spezifisch und generisch: lieber generischer "
+        "(en:potatoes statt en:waxy-bio-potatoes-from-uckermark)."
     )
 
 

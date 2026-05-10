@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Changed — Slice 4 prompt tuning after first eval (2026-05-10)
+
+- Sharpened the system-prompt with explicit negative examples for
+  the rules the v1 prompt got wrong on a 25-item neutral-agent eval:
+  bio-leak (2/25 cases), brand-leak in vorrat: slugs (1/25), packaging-
+  cut info bleeding into the slug (1/25), hallucinated `en:`-tags for
+  non-OFF concepts (1/25 — the flower-bouquet stresstest), and
+  vorrat:-preference when an OFF tag is available (2/25).
+- Added 5 new few-shots (now 20 total), each demonstrating one of the
+  failure patterns with a product that is NOT in the eval-set. The
+  rules-with-examples in the system prompt also use products outside
+  the eval-set, so the next eval pass measures generalisation rather
+  than memorisation.
+- Hard accuracy on the v1 eval: 12/25 (48 %); soft (CORRECT +
+  ACCEPTABLE): 19/25 (76 %). Re-eval against the same 25 items after
+  this commit will be reported in the vorrat repo's
+  `docs/research/lebensmittel-classifier-eval.md` (to be added) once
+  the live deploy lands and the eval re-runs.
+
 ### Added — Slice 4: `/lebensmittel` endpoint (vorrat ADR-0038 §2a, barcode-meta path)
 
 - New POST `/lebensmittel` endpoint, sharing the same Llama runtime
